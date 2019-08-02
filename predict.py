@@ -1,4 +1,5 @@
 import os
+import sys
 import re
 import json
 
@@ -110,9 +111,9 @@ class GroupTransformer(BaseEstimator, TransformerMixin):
         
         X['Group_size'] = X['adult'] + X['child']
         
-        X['Group_small'] = X['Group_size'].map(lambda x: 1 if x == 1 else 0)
-        X['Group_middle'] = X['Group_size'].map(lambda x: 1 if 1 < x < 5 else 0)
-        X['Group_large'] = X['Group_size'].map(lambda x: 1 if 10 < x else 0)
+        X['Group_small'] = X['Group_size'].map(lambda x: 1 if int(x) == 1 else 0)
+        X['Group_middle'] = X['Group_size'].map(lambda x: 1 if 1 < int(x) < 5 else 0)
+        X['Group_large'] = X['Group_size'].map(lambda x: 1 if 10 < int(x) else 0)
         
         X.drop(['Group_size', 'adult', 'child'], axis=1, inplace=True)
         
@@ -234,16 +235,28 @@ def predict_prices(keys, data, clf):
         
     return results
 
+def predict_prices_single(data, clf):
 
-def predict(data):
+    row = data.loc[0]
+    (min_, min_proba) = list(), list()
+    
+    for i in range(20):
+        row['premium'] -= row['premium'] * 0.05
+        if clf.predict(pd.DataFrame([row])) == [True]:
+            min_.append(row['premium'])
+            min_proba.append(clf.predict_proba(pd.DataFrame([row]))[0][1])
+            
+    return (min_, min_proba)
+
+
+def predict_from_csv(data):
     
     keys = data.copy().drop_duplicates(['key']).reset_index(drop=True)['key'].values
     X = pipeline.transform(data.copy())
-    #pipeline.transform(X)
     
     if 'is_purchase' in X.columns:
         X.drop('is_purchase', axis=1, inplace=True)
-    data.to_csv('output.csv', index=False)
+    X.to_csv('output.csv', index=False)
         
     clf = joblib.load('model.pkl')
     predictions = clf.predict(X)
@@ -266,8 +279,77 @@ def predict(data):
         
     return results
 
-data = pd.read_csv('input.csv')
-results = predict(data)
 
-with open('output.json', 'w') as f:
-    json.dump(results, f)
+def predict_single(data):
+    
+    
+    names = ('key', 'status', 'company', 'premium', 'sum',
+       'action_type', 'is_partner', 'created_at', 'init_from', 'init_till',
+       'year', 'place', 'is_foreigner', 'sports', 'adult', 'child', 'ip',
+       'referer', 'user_agent', 'timezone', 'is_adblock_enabled')
+    values = data.copy()
+    
+    data = pd.DataFrame()
+    
+    for value, name in zip(values, names):
+        data[name] = [value]
+    data['premium'] = float(data['premium'])
+        
+    if 'is_purchase' in data.columns:
+        data.drop('is_purchase', axis=1, inplace=True)
+    data = pipeline.transform(data)
+    
+    clf = joblib.load('model.pkl')
+    prediction = clf.predict(data)
+    
+    results = {'is_purchase': None}
+    
+    (prices, probabilities) = predict_prices_single(data, clf)
+    
+    if len(prices) != 0:
+        
+        results['is_purchase'] = '1'
+        
+        results['probabilities'] = []
+        
+        for price, proba in zip(prices, probabilities):
+            results['probabilities'].append([str(price), str(proba)])
+        
+    else:
+        
+        results['is_purchase'] = '0'
+        
+    return results
+
+
+if __name__ == '__main__':
+
+    if 'csv' in sys.argv:
+        data = pd.read_csv('input.csv')
+        results = predict_from_csv(data)
+
+        with open('output.json', 'w') as f:
+            json.dump(results, f)
+            
+    else:
+        
+        """
+        (key, is_purchase, status, company, premium, sum, 
+        action_type, is_partner, created_at, init_from, init_till, 
+        year, place, is_foreigner, sports, adult, child, ip, 
+        referer, user_agent, timezone, is_adblock_enabled)
+        """
+        
+        #data = sys.argv[1:]
+        
+        with open('input.txt', 'r') as f:
+            data = f.read().split('|')
+        """
+        data = pd.read_csv('input.txt')
+        data.to_csv('output.csv', index=False)
+        """
+            
+        results = predict_single(data)
+        
+        with open('output.json', 'w') as f:
+            json.dump(results, f)
