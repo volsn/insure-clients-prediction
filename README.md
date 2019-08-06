@@ -60,3 +60,13 @@ In format:
   ]
 }
 ```
+
+# Train
+
+A part of module designed for particial training of a model
+
+```
+Input in csv format must contain labels (y) in 'is_purchase' field and be name 'input.csv'
+Particial training is done by built in function of SDGClassifier,
+it can be replaced with any other sklearn model that has particial_fir method
+```
