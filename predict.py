@@ -2,14 +2,16 @@ import os
 import sys
 import re
 import json
+import datetime
 
 import numpy as np
 import pandas as pd
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import SGDClassifier
 from sklearn.externals import joblib
+from sklearn.preprocessing import MinMaxScaler
 
 import warnings
 warnings.simplefilter("ignore")
@@ -179,8 +181,8 @@ class DropingTransform(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         
         X.drop(['status', 'company', 'year', \
-                'place', 'created_at', 'timezone', 'ip', \
-                'referer', 'is_partner'], axis=1, inplace=True)
+                'place', 'timezone', 'ip', \
+                'referer'], axis=1, inplace=True)
         
         return X
     
@@ -194,8 +196,53 @@ class BinaryTransform(BaseEstimator, TransformerMixin):
         X['is_foreigner'] = X['is_foreigner'].map(lambda x: 1 if x == True else 0)
         X['is_adblock_enabled'] = X['is_adblock_enabled'].map(lambda x: 1 if x == True else 0)
         X['action_type'] = X['action_type'].map(lambda x: 1 if x == True else 0)
-        #X['is_purchase'] = X['is_purchase'].map(lambda x: 1 if x == True else 0)
+        X['is_partner'] = X['is_partner'].map(lambda x: 1 if x == True else 0)
         
+        return X
+    
+class ScalerTransform(BaseEstimator, TransformerMixin):
+    
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X, y=None):
+        
+        scaler = MinMaxScaler()
+        X['premium'] = scaler.fit_transform(X['premium'].values.reshape(-1, 1))
+        X['sum'] = scaler.fit_transform(X['sum'].values.reshape(-1, 1))
+        return X
+
+class TimestampTransform(BaseEstimator, TransformerMixin):
+    
+    possible_hours = ['Hour_{}'.format(hour) for hour in list(range(0, 24))]
+    possible_days = ['Day_{}'.format(day) for day in list(range(0, 7))]
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X, y=None):
+        
+        X['created_at'] = X['created_at'].map(lambda stamp: datetime.datetime.fromtimestamp(int(stamp)))
+        X['weekday'] = X['created_at'].map(lambda date: date.weekday())
+        X['hour'] = X['created_at'].map(lambda date: date.hour)
+        
+        weekday_dummies = pd.get_dummies(X['weekday'], prefix='Day')
+        hour_dummies = pd.get_dummies(X['hour'], prefix='Hour')
+
+        for day in self.possible_days:
+            if day in weekday_dummies.columns:
+                X[day] = weekday_dummies[day]
+            else:
+                X[day] = np.zeros(X.shape[0], dtype=np.uint8)
+
+        for hour in self.possible_hours:
+            if hour in hour_dummies.columns:
+                X[hour] = hour_dummies[hour]
+            else:
+                X[hour] = np.zeros(X.shape[0], dtype=np.uint8)
+                
+        X.drop('created_at', axis=1, inplace=True)
+
         return X
 
 
@@ -207,8 +254,9 @@ pipeline = Pipeline([
     ('user_agent', UserAgentTransform()),
     ('binary', BinaryTransform()),
     ('droping', DropingTransform()),
+    ('scaler', ScalerTransform()),
+    ('timestamp', TimestampTransform()),
 ])
-
 
 def predict_prices(keys, data, clf):
     
