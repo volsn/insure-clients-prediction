@@ -18,6 +18,8 @@ warnings.simplefilter("ignore")
 warnings.warn("deprecated", DeprecationWarning)
 pd.options.mode.chained_assignment = None
 
+scaler = joblib.load('scaler.pkl')
+
 
 class CompaniesTransformer(BaseEstimator, TransformerMixin):
     
@@ -207,9 +209,8 @@ class ScalerTransform(BaseEstimator, TransformerMixin):
     
     def transform(self, X, y=None):
         
-        scaler = MinMaxScaler()
-        X['premium'] = scaler.fit_transform(X['premium'].values.reshape(-1, 1))
-        X['sum'] = scaler.fit_transform(X['sum'].values.reshape(-1, 1))
+        X['premium'] = scaler.transform(X['premium'].values.reshape(-1, 1))
+        X['sum'] = scaler.transform(X['sum'].values.reshape(-1, 1))
         return X
 
 class TimestampTransform(BaseEstimator, TransformerMixin):
@@ -283,7 +284,7 @@ def predict_prices(keys, data, clf):
         
     return results
 
-def predict_prices_single(data, clf):
+def predict_prices_single(data, clf, premium):
 
     row = data.loc[0]
     (min_, min_proba) = list(), list()
@@ -291,7 +292,9 @@ def predict_prices_single(data, clf):
     for i in range(20):
         row['premium'] -= row['premium'] * 0.05
         if clf.predict(pd.DataFrame([row])) == [True]:
-            min_.append(row['premium'])
+            premium -= premium * 0.05
+            # scaler.inverse_transform(np.array([row['premium']]).reshape(-1, 1))
+            min_.append(premium)
             min_proba.append(clf.predict_proba(pd.DataFrame([row]))[0][1])
             
     return (min_, min_proba)
@@ -342,6 +345,7 @@ def predict_single(data):
     for value, name in zip(values, names):
         data[name] = [value]
     data['premium'] = float(data['premium'])
+    premium = data['premium'].values[0]
         
     if 'is_purchase' in data.columns:
         data.drop('is_purchase', axis=1, inplace=True)
@@ -352,7 +356,7 @@ def predict_single(data):
     
     results = {'is_purchase': None}
     
-    (prices, probabilities) = predict_prices_single(data, clf)
+    (prices, probabilities) = predict_prices_single(data, clf, premium)
     
     if len(prices) != 0:
         
