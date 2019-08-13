@@ -20,8 +20,7 @@ sport_types.npy - Data needed for transform of new data
 ```
 
 ## Input
-input.csv
-Being set through cmd:
+Input has to be set through cmd parameters 
 ``` cmd
 python predict.py "4601" "SENT" "RES" "417.6" "300000.0" "ALWAYS" "False" "1559590087" "2019-06-09" "2019-06-09" "26.0" "nan" "False" "SHESTOVAYA-AKROBATIKA--POLDENS-POLE-DANCE-PILON-" "1" "0" "213.87.128.216" "https://prosto.insure/sportivnaja-strakhovka/sport/shestovaya-akrobatika--poldens-pole-dance-pilon-" "Mozilla/5.0 (Linux; Android 8.0.0; VTR-L29) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.157 Mobile Safari/537.36" "180.0" "False" 
 {"is_purchase": "0"}
