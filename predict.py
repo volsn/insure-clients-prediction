@@ -1,3 +1,9 @@
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
+
+
 import os
 import sys
 import re
@@ -392,16 +398,16 @@ if __name__ == '__main__':
         referer, user_agent, timezone, is_adblock_enabled)
         """
         
-        #data = sys.argv[1:]
+        data = sys.argv[1:]
         
+        """
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'input.txt'), 'r') as f:
             data = f.read().split('|')
-        """
+        
         data = pd.read_csv('input.txt')
         data.to_csv('output.csv', index=False)
         """
             
         results = predict_single(data)
         
-        with open('output.json', 'w') as f:
-            json.dump(results, f)
+        print(json.dumps(results))
