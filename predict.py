@@ -24,7 +24,8 @@ warnings.simplefilter("ignore")
 warnings.warn("deprecated", DeprecationWarning)
 pd.options.mode.chained_assignment = None
 
-scaler = joblib.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'scaler.pkl'))
+scaler_premium = joblib.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'scaler_premium.pkl'))
+scaler_sum = joblib.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'scaler_sum.pkl'))
 
 
 class CompaniesTransformer(BaseEstimator, TransformerMixin):
@@ -215,8 +216,8 @@ class ScalerTransform(BaseEstimator, TransformerMixin):
     
     def transform(self, X, y=None):
         
-        X['premium'] = scaler.transform(X['premium'].values.reshape(-1, 1))
-        X['sum'] = scaler.transform(X['sum'].values.reshape(-1, 1))
+        X['premium'] = scaler_premium.transform(X['premium'].values.reshape(-1, 1))
+        X['sum'] = scaler_sum.transform(X['sum'].values.reshape(-1, 1))
         return X
 
 class TimestampTransform(BaseEstimator, TransformerMixin):
@@ -294,15 +295,25 @@ def predict_prices_single(data, clf, premium):
 
     row = data.loc[0]
     (min_, min_proba) = list(), list()
+    premium_ = premium
     
-    for i in range(20):
-        row['premium'] -= row['premium'] * 0.05
+    for i in range(10):  
+        premium += premium * 0.05
+        row.premium = scaler_premium.transform([[premium]])
+        
         if clf.predict(pd.DataFrame([row])) == [True]:
-            premium -= premium * 0.05
-            # scaler.inverse_transform(np.array([row['premium']]).reshape(-1, 1))
             min_.append(premium)
             min_proba.append(clf.predict_proba(pd.DataFrame([row]))[0][1])
             
+    premium = premium_
+    for i in range(10):  
+        premium -= premium * 0.05
+        row.premium = scaler_premium.transform([[premium]])
+
+        if clf.predict(pd.DataFrame([row])) == [True]:
+            min_.append(premium)
+            min_proba.append(clf.predict_proba(pd.DataFrame([row]))[0][1])
+
     return (min_, min_proba)
 
 
