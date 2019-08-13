@@ -18,7 +18,7 @@ warnings.simplefilter("ignore")
 warnings.warn("deprecated", DeprecationWarning)
 pd.options.mode.chained_assignment = None
 
-scaler = joblib.load('scaler.pkl')
+scaler = joblib.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'scaler.pkl'))
 
 
 class CompaniesTransformer(BaseEstimator, TransformerMixin):
@@ -46,7 +46,7 @@ class CompaniesTransformer(BaseEstimator, TransformerMixin):
             
         return data__companies
     
-POSSIBLE_COLUMNS = np.load('sport_types.npy').tolist()
+POSSIBLE_COLUMNS = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sport_types.npy')).tolist()
     
     
 class SportTransform(BaseEstimator, TransformerMixin):
@@ -351,7 +351,7 @@ def predict_single(data):
         data.drop('is_purchase', axis=1, inplace=True)
     data = pipeline.transform(data)
     
-    clf = joblib.load('model.pkl')
+    clf = joblib.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model.pkl'))
     prediction = clf.predict(data)
     
     results = {'is_purchase': None}
@@ -394,7 +394,7 @@ if __name__ == '__main__':
         
         #data = sys.argv[1:]
         
-        with open('input.txt', 'r') as f:
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'input.txt'), 'r') as f:
             data = f.read().split('|')
         """
         data = pd.read_csv('input.txt')
