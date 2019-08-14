@@ -263,7 +263,7 @@ pipeline = Pipeline([
     ('binary', BinaryTransform()),
     ('droping', DropingTransform()),
     ('scaler', ScalerTransform()),
-    ('timestamp', TimestampTransform()),
+    ('timestamp', TimestampTransform())
 ])
 
 def predict_prices(keys, data, clf):
@@ -274,14 +274,14 @@ def predict_prices(keys, data, clf):
         (min_, max_) = (0, 0)
     
         for i in range(20):
-            row.loc['premium'] -= row['premium'] * 0.05
+            row.loc['premium'] -= row['premium'] * 0.15
             if clf.predict(pd.DataFrame([row])) == [True]:
                 min_ = row['premium']
             else:
                 break
 
         for i in range(20):
-            row.loc['premium'] += row['premium'] * 0.05
+            row.loc['premium'] += row['premium'] * 0.15
             if clf.predict(pd.DataFrame([row])) == [True]:
                 max_ = row['premium']
             else:
@@ -297,16 +297,16 @@ def predict_prices_single(data, clf, premium):
     (min_, min_proba) = list(), list()
     premium_ = premium
     
-    for i in range(10):  
+    for i in range(5):  
         premium += premium * 0.05
         row.premium = scaler_premium.transform([[premium]])
         
         if clf.predict(pd.DataFrame([row])) == [True]:
             min_.append(premium)
-            min_proba.append(clf.predict_proba(pd.DataFrame([row]))[0][1])
+            min_proba.append(clf.predict_proba(pd.DataFrame([row]))[0][0])
             
     premium = premium_
-    for i in range(10):  
+    for i in range(5):  
         premium -= premium * 0.05
         row.premium = scaler_premium.transform([[premium]])
 
