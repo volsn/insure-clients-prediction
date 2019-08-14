@@ -296,19 +296,20 @@ def predict_prices_single(data, clf, premium):
     row = data.loc[0]
     (min_, min_proba) = list(), list()
     premium_ = premium
+    step = 0.05 * premium
     
-    for i in range(5):  
-        premium += premium * 0.05
-        row.premium = scaler_premium.transform([[premium]])
+    for i in range(10):  
+        premium += step
+        row.premium = scaler_sum.transform([[premium]])
         
         if clf.predict(pd.DataFrame([row])) == [True]:
             min_.append(premium)
-            min_proba.append(clf.predict_proba(pd.DataFrame([row]))[0][0])
+            min_proba.append(clf.predict_proba(pd.DataFrame([row]))[0][1])
             
     premium = premium_
-    for i in range(5):  
-        premium -= premium * 0.05
-        row.premium = scaler_premium.transform([[premium]])
+    for i in range(10):  
+        premium -= step
+        row.premium = scaler_sum.transform([[premium]])
 
         if clf.predict(pd.DataFrame([row])) == [True]:
             min_.append(premium)
