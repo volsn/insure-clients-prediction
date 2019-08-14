@@ -35,9 +35,9 @@ class CompaniesTransformer(BaseEstimator, TransformerMixin):
     
     def transform(self, X, y=None):
         
-        data__companies = self._find_num_companies(X)
+        #data__companies = self._find_num_companies(X)
         X = X.drop_duplicates(['key']).reset_index(drop=True)
-        X['Num_of_companies'] = data__companies
+        #X['Num_of_companies'] = data__companies
         X.drop('key', axis=1, inplace=True)
         
         return X
@@ -58,28 +58,63 @@ POSSIBLE_COLUMNS = np.load(os.path.join(os.path.dirname(os.path.realpath(__file_
     
 class SportTransform(BaseEstimator, TransformerMixin):
     
-    possible_columns = POSSIBLE_COLUMNS
+    possible_columns = [
+         'DANCE',
+         'GIMNASTIKA',
+         'CHIRLIDING',
+         'TURIZM',
+         'PLAVANIE',
+         'BOKS',
+         'VINDSYORFING',
+         'STRELBA',
+         'TANTSY',
+         'FUTBOL',
+         'GANDBOL',
+         'ARMRESLING',
+         'BEG',
+         'BOJ',
+         'DZYUDO',
+         'BMX',
+         'KATANIE',
+         'TRIATLON',
+         'KARATE',
+         'AEROBIKA'
+    ]
+    
+    possible_columns_dummies = ['sport_{}'.format(sport) for sport in possible_columns]
     
     def fit(self, X, y=None):
         
         sports_dummies = pd.get_dummies(X['sports'], prefix='Sport')
-        self.possible_columns.extend([dummy for dummy in sports_dummies if dummy not in self.possible_columns])
+        self.possible_columns = np.concatenate([self.possible_columns, [dummy for dummy in sports_dummies if dummy not in self.possible_columns]])
+        
+        np.save('sport_types.npy', self.possible_columns)
         
         return self
     
     def transform(self, X, y=None):
         
-        sports_dummies = pd.get_dummies(X['sports'], prefix='Sport')
-        for column in self.possible_columns:
-            if column in sports_dummies.columns:
-                X[column] = sports_dummies[column]
+        for i, row in X.iterrows():
+            for sport in self.possible_columns:
+                if re.search(sport, X.loc[i].sports):
+                    X.loc[i, 'sports'] = sport
+                    
+            if X.loc[i].sports not in self.possible_columns:
+                X.loc[i, 'sports'] = 'Others'
+                    
+                    
+        user_agent_dummies = pd.get_dummies(X['sports'], prefix='sport')
+        
+        for column in self.possible_columns_dummies:
+            if column in user_agent_dummies.columns:
+                X[column] = user_agent_dummies[column]
             else:
                 X[column] = np.zeros(X.shape[0], dtype=np.uint8)
-        
-        #X = pd.concat([X, sports_dummies], axis=1)
+                
         X.drop('sports', axis=1, inplace=True)
         
         return X
+    
     
 class DurationTransform(BaseEstimator, TransformerMixin):
     
@@ -191,7 +226,7 @@ class DropingTransform(BaseEstimator, TransformerMixin):
         
         X.drop(['status', 'company', 'year', \
                 'place', 'timezone', 'ip', \
-                'referer'], axis=1, inplace=True)
+                'referer', 'created_at', 'action_type', 'is_partner', 'is_foreigner', 'is_adblock_enabled'], axis=1, inplace=True)
         
         return X
     
@@ -263,8 +298,8 @@ pipeline = Pipeline([
     ('binary', BinaryTransform()),
     ('droping', DropingTransform()),
     ('scaler', ScalerTransform()),
-    ('timestamp', TimestampTransform())
 ])
+
 
 def predict_prices(keys, data, clf):
     
