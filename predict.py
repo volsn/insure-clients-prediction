@@ -332,7 +332,6 @@ def predict_prices_single(data, clf, premium):
     (min_, min_proba) = list(), list()
     premium_ = premium
     step = 0.05 * premium
-    print(row.premium)
     
     for i in range(10):
         premium += step
