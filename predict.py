@@ -27,7 +27,6 @@ pd.options.mode.chained_assignment = None
 scaler_premium = joblib.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'scaler_premium.pkl'))
 scaler_sum = joblib.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'scaler_sum.pkl'))
 
-
 class CompaniesTransformer(BaseEstimator, TransformerMixin):
     
     def fit(self, X, y=None):
@@ -53,7 +52,7 @@ class CompaniesTransformer(BaseEstimator, TransformerMixin):
             
         return data__companies
     
-POSSIBLE_COLUMNS = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sport_types.npy')).tolist()
+POSSIBLE_COLUMNS = np.load('sport_types.npy').tolist()
     
     
 class SportTransform(BaseEstimator, TransformerMixin):
@@ -88,11 +87,27 @@ class SportTransform(BaseEstimator, TransformerMixin):
         sports_dummies = pd.get_dummies(X['sports'], prefix='Sport')
         self.possible_columns = np.concatenate([self.possible_columns, [dummy for dummy in sports_dummies if dummy not in self.possible_columns]])
         
+        """
+        with open('sport_types.pkl', 'w') as f:
+            pickle.dump(self.possible_columns, f)
+        """
+        
         np.save('sport_types.npy', self.possible_columns)
         
         return self
     
     def transform(self, X, y=None):
+        """
+        sports_dummies = pd.get_dummies(X['sports'], prefix='Sport')
+        for column in self.possible_columns:
+            if column in sports_dummies.columns:
+                X[column] = sports_dummies[column]
+            else:
+                X[column] = np.zeros(X.shape[0], dtype=np.uint8)
+        
+        #X = pd.concat([X, sports_dummies], axis=1)
+        X.drop('sports', axis=1, inplace=True)
+        """
         
         for i, row in X.iterrows():
             for sport in self.possible_columns:
@@ -114,7 +129,6 @@ class SportTransform(BaseEstimator, TransformerMixin):
         X.drop('sports', axis=1, inplace=True)
         
         return X
-    
     
 class DurationTransform(BaseEstimator, TransformerMixin):
     
@@ -164,7 +178,6 @@ class GroupTransformer(BaseEstimator, TransformerMixin):
         X.drop(['Group_size', 'adult', 'child'], axis=1, inplace=True)
         
         return X
-    
 """
 Possible OSs:
     - Android
@@ -189,7 +202,7 @@ class UserAgentTransform(BaseEstimator, TransformerMixin):
         )
         
         user_agent_dummies = pd.get_dummies(X['user_agent'], prefix='User_agent')
-        self.possible_columns.extend([dummy for dummy in user_agent_dummies if dummy not in self.possible_columns])
+        self.possible_columns = np.concatenate([self.possible_columns, [dummy for dummy in user_agent_dummies if dummy not in self.possible_columns]])
         
         
         return self
@@ -230,6 +243,7 @@ class DropingTransform(BaseEstimator, TransformerMixin):
         
         return X
     
+        
 class BinaryTransform(BaseEstimator, TransformerMixin):
     
     def fit(self, X, y=None):
@@ -241,53 +255,10 @@ class BinaryTransform(BaseEstimator, TransformerMixin):
         X['is_adblock_enabled'] = X['is_adblock_enabled'].map(lambda x: 1 if x == True else 0)
         X['action_type'] = X['action_type'].map(lambda x: 1 if x == True else 0)
         X['is_partner'] = X['is_partner'].map(lambda x: 1 if x == True else 0)
+        #X['is_purchase'] = X['is_purchase'].map(lambda x: 1 if x == True else 0)
         
         return X
-    
-class ScalerTransform(BaseEstimator, TransformerMixin):
-    
-    def fit(self, X, y=None):
-        return self
-    
-    def transform(self, X, y=None):
         
-        X['premium'] = scaler_premium.transform(X['premium'].values.reshape(-1, 1))
-        X['sum'] = scaler_sum.transform(X['sum'].values.reshape(-1, 1))
-        return X
-
-class TimestampTransform(BaseEstimator, TransformerMixin):
-    
-    possible_hours = ['Hour_{}'.format(hour) for hour in list(range(0, 24))]
-    possible_days = ['Day_{}'.format(day) for day in list(range(0, 7))]
-
-    def fit(self, X, y=None):
-        return self
-    
-    def transform(self, X, y=None):
-        
-        X['created_at'] = X['created_at'].map(lambda stamp: datetime.datetime.fromtimestamp(int(stamp)))
-        X['weekday'] = X['created_at'].map(lambda date: date.weekday())
-        X['hour'] = X['created_at'].map(lambda date: date.hour)
-        
-        weekday_dummies = pd.get_dummies(X['weekday'], prefix='Day')
-        hour_dummies = pd.get_dummies(X['hour'], prefix='Hour')
-
-        for day in self.possible_days:
-            if day in weekday_dummies.columns:
-                X[day] = weekday_dummies[day]
-            else:
-                X[day] = np.zeros(X.shape[0], dtype=np.uint8)
-
-        for hour in self.possible_hours:
-            if hour in hour_dummies.columns:
-                X[hour] = hour_dummies[hour]
-            else:
-                X[hour] = np.zeros(X.shape[0], dtype=np.uint8)
-                
-        X.drop('created_at', axis=1, inplace=True)
-
-        return X
-
 
 pipeline = Pipeline([
     ('companies', CompaniesTransformer()),
@@ -297,7 +268,6 @@ pipeline = Pipeline([
     ('user_agent', UserAgentTransform()),
     ('binary', BinaryTransform()),
     ('droping', DropingTransform()),
-    
 ])
 
 
@@ -351,7 +321,7 @@ def predict_prices_single(data, clf, premium, step):
             min_proba.append(clf.predict_proba(pd.DataFrame([row]))[0][1])
 
     return (min_, min_proba)
-
+    
 
 def predict_from_csv(data):
     
