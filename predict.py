@@ -226,7 +226,7 @@ class DropingTransform(BaseEstimator, TransformerMixin):
         
         X.drop(['status', 'company', 'year', \
                 'place', 'timezone', 'ip', \
-                'referer', 'created_at', 'action_type', 'is_partner', 'is_foreigner', 'is_adblock_enabled'], axis=1, inplace=True)
+                'referer', 'created_at'], axis=1, inplace=True)
         
         return X
     
@@ -297,7 +297,7 @@ pipeline = Pipeline([
     ('user_agent', UserAgentTransform()),
     ('binary', BinaryTransform()),
     ('droping', DropingTransform()),
-    ('scaler', ScalerTransform()),
+    
 ])
 
 
@@ -326,12 +326,13 @@ def predict_prices(keys, data, clf):
         
     return results
 
-def predict_prices_single(data, clf, premium):
+def predict_prices_single(data, clf, premium, step):
 
     row = data.loc[0]
     (min_, min_proba) = list(), list()
     premium_ = premium
-    step = 0.05 * premium
+    step = step / 100 * premium
+    print(row.premium)
     
     for i in range(10):
         premium += step
@@ -384,7 +385,7 @@ def predict_from_csv(data):
     return results
 
 
-def predict_single(data):
+def predict_single(data, step):
     
     
     names = ('key', 'status', 'company', 'premium', 'sum',
@@ -409,7 +410,7 @@ def predict_single(data):
     
     results = {'is_purchase': None}
     
-    (prices, probabilities) = predict_prices_single(data, clf, premium)
+    (prices, probabilities) = predict_prices_single(data, clf, premium, step)
     
     if len(prices) != 0:
         
@@ -445,7 +446,8 @@ if __name__ == '__main__':
         referer, user_agent, timezone, is_adblock_enabled)
         """
         
-        data = sys.argv[1:]
+        step = int(sys.argv[1])
+        data = sys.argv[2:]
         
         """
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'input.txt'), 'r') as f:
@@ -455,6 +457,6 @@ if __name__ == '__main__':
         data.to_csv('output.csv', index=False)
         """
             
-        results = predict_single(data)
+        results = predict_single(data, step)
         
         print(json.dumps(results))
